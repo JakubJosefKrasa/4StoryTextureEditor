@@ -9,7 +9,7 @@ An editor that loads 4Story texture files (.TTX) any texture can be changed and 
 
 2. Build on Release or Debug x86
 
-3. Run the generated TextureEditor.EXE file located in <strong>.\bin\Debug</strong> or <strong>.\bin\Release</strong>
+3. Run the generated TextureEditor.exe file located in <strong>.\bin\Debug</strong> or <strong>.\bin\Release</strong>
 
 
 ![Texture Editor Preview of the application](./TextureEditorPreview.png)
