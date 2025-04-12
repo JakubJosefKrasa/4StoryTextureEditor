@@ -5,6 +5,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web;
@@ -33,10 +34,10 @@ namespace TextureEditor
         // Contains Texture file names without path
         public List<string> TextureFileNames { get; set; } = new List<string>();
 
-        // Dictionary where key is the texture file name and value is another dictionary where key is the dwPOS and value is the texture data
+        // Dictionary where key is the texture file name and value is another dictionary where key is the texture id and value is the texture data
         public Dictionary<string, Dictionary<uint, CT3DTexture>> MapTexture { get; set; } = new Dictionary<string, Dictionary<uint, CT3DTexture>>();
 
-        // Dictionary where key is the texture file name and value is another dictionary where key is the dwPOS and value is the texture set data that holds texture ids
+        // Dictionary where key is the texture file name and value is another dictionary where key is the texture id and value is the texture set data that holds texture and its all info
         public Dictionary<string, Dictionary<uint, TextureSet>> MapTextureSet { get; set; } = new Dictionary<string, Dictionary<uint, TextureSet>>();
 
         public static string LoadString(BinaryReader br)
@@ -139,25 +140,35 @@ namespace TextureEditor
                 return;
             }
 
-            using (BinaryReader br = new BinaryReader(File.Open(filePath, FileMode.Open)))
+            using (FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            using (BinaryReader br = new BinaryReader(fileStream))
             {
-                long fileLength = br.BaseStream.Length;
-                long dwPOS = br.BaseStream.Position;
+                long dwLength = fileStream.Length;
+                long dwPos = fileStream.Position;
 
-                while (dwPOS < fileLength)
+                while (dwPos < dwLength)
                 {
-                    BinaryReader decompressedReader = TachyonCompressor.UcprStream(br);
+                    uint originalLength = br.ReadUInt32();
+                    uint compressedLength = br.ReadUInt32();
 
-                    int textureCount = decompressedReader.ReadInt32();
+                    uint keyPos = (uint)dwPos;
+
+                    byte[] compressedData = br.ReadBytes((int)compressedLength);
+
+                    IntPtr ucpr = CTachyonWrapperFunctions.UncompressorCreate();
+
+                    CTachyonWrapperFunctions.UncompressorUncompress(ucpr, compressedData, compressedLength, originalLength);
 
                     TextureSet textureSet = new TextureSet();
+
+                    int textureCount = ReadInt32(ucpr);
 
                     bool isFirstTexture = true;
                     uint firstTextureID = 0;
 
                     for (int i = 0; i < textureCount; i++)
                     {
-                        uint textureID = decompressedReader.ReadUInt32();
+                        uint textureID = ReadUInt32(ucpr);
 
                         if (isFirstTexture)
                         {
@@ -168,57 +179,60 @@ namespace TextureEditor
                         textureSet.PushTexture(textureID, null);
                     }
 
-                    int keyCount = decompressedReader.ReadInt32();
+                    int keyCount = ReadInt32(ucpr);
                     for (int i = 0; i < keyCount; i++)
                     {
                         UVKey uvKey = new UVKey();
-                        uvKey.Tick = decompressedReader.ReadUInt32();
-                        uvKey.KeyU = decompressedReader.ReadSingle();
-                        uvKey.KeyV = decompressedReader.ReadSingle();
-                        uvKey.KeyR = decompressedReader.ReadSingle();
-                        uvKey.KeySU = decompressedReader.ReadSingle();
-                        uvKey.KeySV = decompressedReader.ReadSingle();
+                        uvKey.Tick = ReadUInt32(ucpr);
+                        uvKey.KeyU = ReadFloat(ucpr);
+                        uvKey.KeyV = ReadFloat(ucpr);
+                        uvKey.KeyR = ReadFloat(ucpr);
+                        uvKey.KeySU = ReadFloat(ucpr);
+                        uvKey.KeySV = ReadFloat(ucpr);
 
                         textureSet.UVKeys.Add(uvKey);
                     }
 
-                    textureSet.TotalTick = decompressedReader.ReadUInt32();
-                    textureSet.MipFilter = decompressedReader.ReadUInt32();
-                    textureSet.MipBias = decompressedReader.ReadSingle();
+                    textureSet.TotalTick = ReadUInt32(ucpr);
+                    textureSet.MipFilter = ReadUInt32(ucpr);
+                    textureSet.MipBias = ReadFloat(ucpr);
 
-                    textureSet.TextureOption = decompressedReader.ReadByte();
-                    byte bFormat = decompressedReader.ReadByte();
+                    textureSet.TextureOption = ReadByte(ucpr);
+                    byte bFormat = ReadByte(ucpr);
 
-                    uint dwOriginalSize = decompressedReader.ReadUInt32();
-                    uint dwCompressedSize = decompressedReader.ReadUInt32();
+                    uint dwOriginalSize = ReadUInt32(ucpr);
+                    uint dwCompressedSize = ReadUInt32(ucpr);
 
                     if (dwCompressedSize > 0)
                     {
                         CT3DTexture texture = new CT3DTexture();
 
-                        byte[] textureData = decompressedReader.ReadBytes((int)dwCompressedSize);
+                        byte[] compressedTextureData = ReadBytes(ucpr, dwCompressedSize);
 
-                        texture.LoadTexture(firstTextureID, textureData, dwCompressedSize, bFormat);
+                        texture.LoadTextureData(compressedTextureData, dwCompressedSize, dwOriginalSize, bFormat);
+
+                        CTachyonWrapperFunctions.UncompressorSeek(ucpr, dwCompressedSize, CTachyonWrapperFunctions.CFILE_CURRENT);
 
                         // do not overwrite existing texture
-                        if (!mapTexture.ContainsKey((uint)dwPOS))
+                        if (!mapTexture.ContainsKey((uint)keyPos))
                         {
-                            mapTexture.Add((uint)dwPOS, texture);
+                            mapTexture.Add((uint)keyPos, texture);
                         }
                     }
 
                     // do not overwrite existing texture set
-                    if (!mapTextureSet.ContainsKey((uint)dwPOS))
+                    if (!mapTextureSet.ContainsKey((uint)keyPos))
                     {
-                        mapTextureSet.Add((uint)dwPOS, textureSet);
+                        mapTextureSet.Add((uint)keyPos, textureSet);
                     }
 
-                    dwPOS = br.BaseStream.Position;
+                    CTachyonWrapperFunctions.UncompressorDestroy(ucpr);
+
+                    dwPos = fileStream.Position;
                     nIndex++;
-                    //Console.WriteLine($"Progress: {nIndex * 100 / textureTotalCount}%");
+                    Console.WriteLine($"Progress: {nIndex * 100 / textureTotalCount}%");
                 }
             }
-            Console.WriteLine("Loading");
         }
 
         public void CompleteTEX()
@@ -249,7 +263,7 @@ namespace TextureEditor
 
         public void SaveTexturesInPNG()
         {
-            string mapOutputDir = ".\\MapOutputTextures";
+            string mapOutputDir = ".\\DumpedTextures";
             if (!Directory.Exists(mapOutputDir))
                 Directory.CreateDirectory(mapOutputDir);
 
@@ -260,7 +274,6 @@ namespace TextureEditor
                     if (dwIDTexture.Value != null)
                     {
                         uint textureID = dwIDTexture.Key;
-                        uint dwPOS = dwIDTexture.Value.GetTextureId(0);
 
                         if (dwIDTexture.Value.GetTextureData(0) != null)
                         {
@@ -294,76 +307,100 @@ namespace TextureEditor
 
             List<IndexFile> indexFiles = new List<IndexFile>();
 
+            IntPtr device = CTachyonWrapperFunctions.DeviceCreate();
+
             int fileIndex = 0;
             foreach (string textureFileName in TextureFileNames)
             {
-                using (FileStream fileStream = new FileStream(Path.Combine(listOutputDir, textureFileName), FileMode.Create))
+                if (!MapTextureSet.TryGetValue(textureFileName, out var textureSets))
+                    continue;
+
+                string fileNameAndPath = Path.Combine(listOutputDir, textureFileName);
+
+                IntPtr pFile = CTachyonWrapperFunctions.DoCreateNewFile(fileNameAndPath);
+
+
+                foreach (KeyValuePair<uint, TextureSet> kvp in textureSets)
                 {
-                    if (!MapTextureSet.TryGetValue(textureFileName, out var textureSets))
-                        continue;
+                    uint filePosition = CTachyonWrapperFunctions.DoGetFilePosition(pFile);
 
-                    foreach (KeyValuePair<uint, TextureSet> kvp in textureSets)
+                    IntPtr tachyonCompressor = CTachyonWrapperFunctions.CompressorCreate();
+
+                    TextureSet textureSet = kvp.Value;
+
+                    int texturesCount = textureSet.GetTexturesCount();
+
+                    WriteInt32(tachyonCompressor, texturesCount);
+
+                    for (int i = 0; i < texturesCount; i++)
                     {
-                        TextureSet textureSet = kvp.Value;
-                        long startPos = fileStream.Position;
+                        uint textureID = textureSet.GetTextureId(i);
+                        WriteUInt32(tachyonCompressor, textureID);
+                    }
 
-                        using (TachyonCompressor compressor = new TachyonCompressor())
+                    int uvKeysCount = textureSet.GetUVKeysCount();
+
+                    WriteInt32(tachyonCompressor, uvKeysCount);
+
+                    foreach (var uvKey in textureSet.UVKeys)
+                    {
+                        WriteUInt32(tachyonCompressor, uvKey.Tick);
+                        WriteFloat(tachyonCompressor, uvKey.KeyU);
+                        WriteFloat(tachyonCompressor, uvKey.KeyV);
+                        WriteFloat(tachyonCompressor, uvKey.KeyR);
+                        WriteFloat(tachyonCompressor, uvKey.KeySU);
+                        WriteFloat(tachyonCompressor, uvKey.KeySV);
+                    }
+
+                    WriteUInt32(tachyonCompressor, textureSet.TotalTick);
+                    WriteUInt32(tachyonCompressor, textureSet.MipFilter);
+                    WriteFloat(tachyonCompressor, textureSet.MipBias);
+                    WriteByte(tachyonCompressor, textureSet.TextureOption);
+
+                    var texture = textureSet.GetTextureData(0);
+
+                    if (texture == null)
+                    {
+                        WriteByte(tachyonCompressor, 0); //bFormat
+                        WriteUInt32(tachyonCompressor, 0); // originalSize
+                        WriteUInt32(tachyonCompressor, 0); // compressedSize
+                    }
+                    else
+                    {
+                        WriteByte(tachyonCompressor, texture.Format);
+
+                        uint originalSize;
+                        uint generatedSize;
+
+                        IntPtr generatedDataPtr;
+
+                        bool result = CTachyonWrapperFunctions.DoGenerateTextureDDS(device, texture.TextureData, (uint)texture.TextureData.Length, texture.Format, out generatedDataPtr, out generatedSize, out originalSize);
+                        if (!result)
                         {
-                            int texturesCount = textureSet.GetTexturesCount();
-
-                            compressor.Write(BitConverter.GetBytes(texturesCount), 0, sizeof(int));
-
-                            for (int i = 0; i < texturesCount; i++)
-                            {
-                                uint textureID = textureSet.GetTextureId(i);
-                                compressor.Write(BitConverter.GetBytes(textureID), 0, sizeof(uint));
-                            }
-
-                            int uvKeysCount = textureSet.GetUVKeysCount();
-                            compressor.Write(BitConverter.GetBytes(uvKeysCount), 0, sizeof(int));
-
-                            foreach (var uvKey in textureSet.UVKeys)
-                            {
-                                compressor.Write(BitConverter.GetBytes(uvKey.Tick), 0, sizeof(uint));
-                                compressor.Write(BitConverter.GetBytes(uvKey.KeyU), 0, sizeof(float));
-                                compressor.Write(BitConverter.GetBytes(uvKey.KeyV), 0, sizeof(float));
-                                compressor.Write(BitConverter.GetBytes(uvKey.KeyR), 0, sizeof(float));
-                                compressor.Write(BitConverter.GetBytes(uvKey.KeySU), 0, sizeof(float));
-                                compressor.Write(BitConverter.GetBytes(uvKey.KeySV), 0, sizeof(float));
-                            }
-
-                            compressor.Write(BitConverter.GetBytes(textureSet.TotalTick), 0, sizeof(uint));
-                            compressor.Write(BitConverter.GetBytes(textureSet.MipFilter), 0, sizeof(uint));
-                            compressor.Write(BitConverter.GetBytes(textureSet.MipBias), 0, sizeof(float));
-                            compressor.Write(BitConverter.GetBytes(textureSet.TextureOption), 0, sizeof(byte));
-
-                            var texture = textureSet.GetTextureData(0);
-
-                            if (texture == null)
-                            {
-                                compressor.Write(BitConverter.GetBytes(0), 0, sizeof(byte)); //bFormat
-                                compressor.Write(BitConverter.GetBytes(0), 0, sizeof(uint)); // originalSize
-                                compressor.Write(BitConverter.GetBytes(0), 0, sizeof(uint)); // compressedSize
-                            }
-                            else
-                            {
-                                compressor.Write(BitConverter.GetBytes(texture.Format), 0, sizeof(byte));
-
-                                byte[] compressedTextureData = TachyonCompressor.Compress(texture.TextureData);
-                                compressor.Write(BitConverter.GetBytes((uint)texture.TextureData.Length), 0, sizeof(uint));
-                                compressor.Write(BitConverter.GetBytes((uint)compressedTextureData.Length), 0, sizeof(uint));
-                                compressor.Write(compressedTextureData, 0, compressedTextureData.Length);
-                            }
-
-                            // Write compressed data to file and record position
-                            compressor.ToFile(fileStream);
+                            Console.WriteLine("Error generating texture data");
+                            return;
                         }
 
-                        indexFiles.Add(new IndexFile(kvp.Key, (uint)fileIndex, (uint)startPos));
+                        byte[] generatedData = new byte[generatedSize];
+                        Marshal.Copy(generatedDataPtr, generatedData, 0, (int)generatedSize);
+
+                        WriteUInt32(tachyonCompressor, originalSize);
+                        WriteUInt32(tachyonCompressor, generatedSize);
+                        WriteBytes(tachyonCompressor, generatedData, generatedSize);
                     }
+
+                    CTachyonWrapperFunctions.CompressorToFile(tachyonCompressor, pFile);
+                    CTachyonWrapperFunctions.CompressorDestroy(tachyonCompressor);
+
+                    indexFiles.Add(new IndexFile(kvp.Key, (uint)fileIndex, filePosition));
                 }
+
+                CTachyonWrapperFunctions.DoDestroyFile(pFile);
+
                 fileIndex++;
             }
+
+            CTachyonWrapperFunctions.DeviceDestroy(device);
 
             BuildIndexFile(indexFiles);
 
@@ -397,5 +434,78 @@ namespace TextureEditor
                 }
             }
         }
+
+    #region CTachyon helper methods for reading and writing
+
+        private int ReadInt32(IntPtr ucpr)
+        {
+            byte[] buffer = new byte[4];
+            CTachyonWrapperFunctions.UncompressorRead(ucpr, buffer, 4);
+
+            return BitConverter.ToInt32(buffer, 0);
+        }
+
+        private uint ReadUInt32(IntPtr ucpr)
+        {
+            byte[] buffer = new byte[4];
+            CTachyonWrapperFunctions.UncompressorRead(ucpr, buffer, 4);
+
+            return BitConverter.ToUInt32(buffer, 0);
+        }
+
+        private float ReadFloat(IntPtr ucpr)
+        {
+            byte[] buffer = new byte[4];
+            CTachyonWrapperFunctions.UncompressorRead(ucpr, buffer, 4);
+
+            return BitConverter.ToSingle(buffer, 0);
+        }
+
+        private byte ReadByte(IntPtr ucpr)
+        {
+            byte[] buffer = new byte[1];
+            CTachyonWrapperFunctions.UncompressorRead(ucpr, buffer, 1);
+
+            return buffer[0];
+        }
+
+        private byte[] ReadBytes(IntPtr ucpr, uint count)
+        {
+            byte[] buffer = new byte[count];
+            CTachyonWrapperFunctions.UncompressorRead(ucpr, buffer, count);
+
+            return buffer;
+        }
+
+        private void WriteInt32(IntPtr ucpr, int value)
+        {
+            byte[] buffer = BitConverter.GetBytes(value);
+            CTachyonWrapperFunctions.CompressorWrite(ucpr, buffer, (uint)buffer.Length);
+        }
+
+        private void WriteUInt32(IntPtr ucpr, uint value)
+        {
+            byte[] buffer = BitConverter.GetBytes(value);
+            CTachyonWrapperFunctions.CompressorWrite(ucpr, buffer, (uint)buffer.Length);
+        }
+
+        private void WriteFloat(IntPtr ucpr, float value)
+        {
+            byte[] buffer = BitConverter.GetBytes(value);
+            CTachyonWrapperFunctions.CompressorWrite(ucpr, buffer, (uint)buffer.Length);
+        }
+
+        private void WriteByte(IntPtr ucpr, byte value)
+        {
+            byte[] buffer = new byte[1] { value };
+            CTachyonWrapperFunctions.CompressorWrite(ucpr, buffer, (uint)buffer.Length);
+        }
+
+        private void WriteBytes(IntPtr ucpr, byte[] data, uint count)
+        {
+            CTachyonWrapperFunctions.CompressorWrite(ucpr, data, count);
+        }
+
+        #endregion
     }
 }

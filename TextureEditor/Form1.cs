@@ -319,15 +319,6 @@ namespace TextureEditor
                         return outputStream.ToArray();
                     }
                 }
-
-                /*
-                using (var magickImage = new MagickImage(memoryStream))
-                {
-                    magickImage.Settings.SetDefine("dds:compression", "dxt5");
-                    magickImage.Write(memoryStream);
-                    return memoryStream.ToArray();
-                }
-                */
             }
         }
 
@@ -355,96 +346,6 @@ namespace TextureEditor
                     PictureBox1.Image = newBitmap;
                 }
             }
-
-
-            /*
-            using (var memoryStream = new MemoryStream())
-            {
-                string listOutputDir = ".\\DumpedDDS";
-                if (!Directory.Exists(listOutputDir))
-                    Directory.CreateDirectory(listOutputDir);
-
-                TextureSet textureSet = GetSelectedTexture();
-                Bitmap bitmap = textureSet.m_Textures[0].Value.m_BitmapImage;
-
-                // Save the Bitmap to the stream (PNG format for lossless conversion)
-                bitmap.Save(memoryStream, ImageFormat.Png);
-                memoryStream.Position = 0; // Reset stream position
-
-                using (var magickImage = new MagickImage(memoryStream))
-                {
-                    magickImage.Settings.SetDefine("dds:compression", GetCompressionText(4));
-
-                    // Save DDS data to a new MemoryStream (instead of a file)
-                    using (var ddsStream = new MemoryStream())
-                    {
-                        magickImage.Write(ddsStream, MagickFormat.Dds); // Write to stream
-                        byte[] ddsBytes = ddsStream.ToArray(); // Extract bytes
-
-                        // Optional: Save to disk for verification
-                        string outputPath = Path.Combine(listOutputDir, $"{Guid.NewGuid()}.dds");
-                        File.WriteAllBytes(outputPath, ddsBytes);
-                    }
-                }
-            }
-            */
-
-
-            /*
-            TextureSet textureSet = GetSelectedTexture();
-            Bitmap bitmap = textureSet.m_Textures[0].Value.m_BitmapImage;
-            Console.WriteLine(textureSet.m_Textures[0].Value.m_pTDATA.Value);
-
-            byte[] imageBytes = BitmapToByteArray(bitmap);
-
-            GCHandle handle = GCHandle.Alloc(imageBytes, GCHandleType.Pinned);
-            try
-            {
-                IntPtr pData = handle.AddrOfPinnedObject();
-
-                IntPtr ppGenData;
-
-                uint pGenSize;
-                uint pOrgSize;
-
-                HelperMethods.DoGenerateMipmap(pData, (uint)imageBytes.Length, textureSet.m_Textures[0].Value.m_bFormat, out ppGenData, out pGenSize, out pOrgSize);
-
-                byte[] ddsData = new byte[pGenSize];
-                Marshal.Copy(ppGenData, ddsData, 0, (int)pGenSize);
-                Console.WriteLine(ppGenData);
-                MessageBox.Show("Completed");
-            }
-            finally
-            {
-                handle.Free();
-            }
-            */
-
-
-            /*
-             * save to a dds file
-            using (var memoryStream = new MemoryStream())
-            {
-                string listOutputDir = ".\\DumpedDDS";
-                if (!Directory.Exists(listOutputDir))
-                    Directory.CreateDirectory(listOutputDir);
-
-                TextureSet textureSet = GetSelectedTexture();
-                Bitmap bitmap = textureSet.m_Textures[0].Value.m_BitmapImage;
-                bitmap.Save(memoryStream, ImageFormat.Png);
-                memoryStream.Position = 0;
-
-                using (var magickImage = new MagickImage(memoryStream))
-                {
-                    magickImage.Settings.SetDefine("dds:compression", "dxt5");
-
-                    string outputPath = Path.Combine(listOutputDir, $"{Guid.NewGuid()}.dds");
-                    magickImage.Write(outputPath);
-                }
-            }
-            */
-
-
         }
 
         private void SaveUVKeyButton_Click(object sender, EventArgs e)
@@ -610,45 +511,24 @@ namespace TextureEditor
             return textureEditor.MapTextureSet[fileName];
         }
 
-        private void SaveTextureInDDSFile(Bitmap bitmap, byte bFormat)
-        {
-            byte[] ddsImageData = BitmapToDDSBytes(bitmap, bFormat);
-
-            string listOutputDir = ".\\DumpedDDS";
-            if (!Directory.Exists(listOutputDir))
-                Directory.CreateDirectory(listOutputDir);
-
-            string outputPath = Path.Combine(listOutputDir, $"{Guid.NewGuid()}.dds");
-
-            File.WriteAllBytes(outputPath, ddsImageData);
-        }
-
         private string GetCompressionText(byte bFormat)
         {
             switch (bFormat)
             {
                 case (byte)TextureCompression.DXT1:
                     return "dxt1";
+                case (byte)TextureCompression.DXT2:
+                    return "dxt2";
                 case (byte)TextureCompression.DXT3:
                     return "dxt3";
+                case (byte)TextureCompression.DXT4:
+                    return "dxt4";
                 case (byte)TextureCompression.DXT5:
                     return "dxt5";
                 case (byte)TextureCompression.NON_COMP:
-                    return "none";
+                    return "21";
                 default:
                     return "dxt3";
-            }
-        }
-
-        private byte[] BitmapToByteArray(Bitmap bitmap)
-        {
-            if (bitmap == null) return null;
-
-            using (MemoryStream ms = new MemoryStream())
-            {
-                bitmap.Save(ms, ImageFormat.Png);
-
-                return ms.ToArray();
             }
         }
     }
