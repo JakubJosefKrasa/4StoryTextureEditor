@@ -98,25 +98,88 @@ namespace TextureEditor
 
             if (selectedIndex < 0) return;
 
+            TexturesListBox.DataSource = new BindingSource(textureEditor.MapTextureSet[textureEditor.TextureFileNames[selectedIndex]], null);
+            TexturesListBox.DisplayMember = "Key";
+            TexturesListBox.ValueMember = "Value";
+
+            UpdateTexturesInFileCountLabel();
+        }
+
+        private void SearchTextureIdTextBox_TextChanged(object sender, EventArgs e)
+        {
+            SearchTextureIdTimer.Stop();
+            SearchTextureIdTimer.Start();
+        }
+
+        private void SearchTextureIdTimer_Tick(object sender, EventArgs e)
+        {
+            SearchTextureIdTimer.Stop();
+
+            DoSearchTextureId();
+        }
+
+        private void DoSearchTextureId()
+        {
+            int selectedIndex = SelectFileComboBox.SelectedIndex;
+
+            if (selectedIndex < 0) return;
+
+            EnableTextureControls();
+
+            if (SearchTextureIdTextBox.Text.Length == 0)
+            {
+                TexturesListBox.DataSource = null;
+                TexturesListBox.Items.Clear();
+
+                TexturesListBox.DataSource = new BindingSource(textureEditor.MapTextureSet[textureEditor.TextureFileNames[selectedIndex]], null);
+                TexturesListBox.DisplayMember = "Key";
+                TexturesListBox.ValueMember = "Value";
+
+                UpdateTexturesInFileCountLabel();
+
+                return;
+            }
+
+            if (!uint.TryParse(SearchTextureIdTextBox.Text, out uint textureIdToFind))
+            {
+                MessageBox.Show("Wrong Texture ID format");
+
+                SearchTextureIdTextBox.Text = "";
+
+                return;
+            }
+
+            TexturesListBox.DataSource = null;
             TexturesListBox.Items.Clear();
 
-            foreach (var kvp in textureEditor.MapTextureSet[textureEditor.TextureFileNames[selectedIndex]])
+            Dictionary<uint, TextureSet> filteredTextures = textureEditor.MapTextureSet[textureEditor.TextureFileNames[selectedIndex]]
+                .Where(kvp => kvp.Key.ToString().Contains(textureIdToFind.ToString()))
+                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+            if (filteredTextures.Count == 0)
             {
-                TexturesListBox.Items.Add($"ID: {kvp.Key}");
+                TexturesListBox.Items.Add("No results found");
+
+                DisableTextureControls();
+                ClearTextureControls();
+
+                return;
             }
-            UpdateTexturesInFileCountLabel();
+
+            TexturesListBox.DataSource = new BindingSource(filteredTextures, null);
+            TexturesListBox.DisplayMember = "Key";
+            TexturesListBox.ValueMember = "Value";
         }
 
         private void TexturesListBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-            int index = TexturesListBox.SelectedIndex;
-
-            if (index < 0) return;
-
             TextureIdsInTextureListBox.Items.Clear();
             UVKeysListBox.Items.Clear();
 
-            TextureSet textureSet = textureEditor.MapTextureSet[textureEditor.TextureFileNames[SelectFileComboBox.SelectedIndex]].ElementAt(index).Value;
+            if (!(TexturesListBox.SelectedItem is KeyValuePair<uint, TextureSet>)) return;
+
+            KeyValuePair<uint, TextureSet> selectedTextureKVP = (KeyValuePair<uint, TextureSet>)TexturesListBox.SelectedItem;
+            TextureSet textureSet = selectedTextureKVP.Value;
 
             if (textureSet.GetTextureData(0) != null)
             {
@@ -126,7 +189,7 @@ namespace TextureEditor
             }
             else
             {
-                uint textureID = textureEditor.MapTextureSet[textureEditor.TextureFileNames[SelectFileComboBox.SelectedIndex]].ElementAt(index).Key;
+                uint textureID = selectedTextureKVP.Key;
                 PictureBox1.Image = null;
                 TextureImageNotFoundLabel.Text = $"Texture [{textureID}] data image was not found";
                 TextureImageNotFoundLabel.Visible = true;
@@ -461,6 +524,127 @@ namespace TextureEditor
             }
         }
 
+        void DisableTextureControls()
+        {
+            AddTextureInFileButton.Enabled = false;
+            DeleteTextureFromFileButton.Enabled = false;
+
+            TextureIdTextBox.Enabled = false;
+
+            AddTextureIdInTexture.Enabled = false;
+            DeleteTextureIdInTexture.Enabled = false;
+            SaveTextureIdInTexture.Enabled = false;
+
+            TotalTickTextBox.Enabled = false;
+
+            CurrentTickTextBox.Enabled = false;
+
+            MipBiasTextBox.Enabled = false;
+
+            MipFilterComboBox.Enabled = false;
+
+            TextureFormatComboBox.Enabled = false;
+
+            SaveTextureInfoButton.Enabled = false;
+
+            PictureBox1.Enabled = false;
+
+            AddImageButton.Enabled = false;
+
+            KeyTickTextBox.Enabled = false;
+
+            KeyUTextBox.Enabled = false;
+
+            KeyVTextBox.Enabled = false;
+
+            KeyRTextBox.Enabled = false;
+
+            KeySUTextBox.Enabled = false;
+
+            KeySVTextBox.Enabled = false;
+
+            SaveUVKeyButton.Enabled = false;
+
+            AddUVKeyButton.Enabled = false;
+
+            DeleteUVKeyButton.Enabled = false;
+        }
+
+        void EnableTextureControls()
+        {
+            AddTextureInFileButton.Enabled = true;
+            DeleteTextureFromFileButton.Enabled = true;
+
+            TextureIdTextBox.Enabled = true;
+
+            AddTextureIdInTexture.Enabled = true;
+            DeleteTextureIdInTexture.Enabled = true;
+            SaveTextureIdInTexture.Enabled = true;
+
+            TotalTickTextBox.Enabled = true;
+
+            CurrentTickTextBox.Enabled = true;
+
+            MipBiasTextBox.Enabled = true;
+
+            MipFilterComboBox.Enabled = true;
+
+            TextureFormatComboBox.Enabled = true;
+
+            SaveTextureInfoButton.Enabled = true;
+
+            PictureBox1.Enabled = true;
+
+            AddImageButton.Enabled = true;
+
+            KeyTickTextBox.Enabled = true;
+
+            KeyUTextBox.Enabled = true;
+
+            KeyVTextBox.Enabled = true;
+
+            KeyRTextBox.Enabled = true;
+
+            KeySUTextBox.Enabled = true;
+
+            KeySVTextBox.Enabled = true;
+
+            SaveUVKeyButton.Enabled = true;
+
+            AddUVKeyButton.Enabled = true;
+
+            DeleteUVKeyButton.Enabled = true;
+        }
+
+        void ClearTextureControls()
+        {
+            TextureIdTextBox.Text = "";
+
+            TotalTickTextBox.Text = "";
+
+            CurrentTickTextBox.Text = "";
+
+            MipBiasTextBox.Text = "";
+
+            MipFilterComboBox.SelectedIndex = -1;
+
+            TextureFormatComboBox.SelectedIndex = -1;
+
+            PictureBox1.Image = null;
+
+            KeyTickTextBox.Text = "";
+
+            KeyUTextBox.Text = "";
+
+            KeyVTextBox.Text = "";
+
+            KeyRTextBox.Text = "";
+
+            KeySUTextBox.Text = "";
+
+            KeySVTextBox.Text = "";
+        }
+
         private void UpdateTexturesInFileCountLabel()
         {
             TexturesInFileCountLabel.Visible = true;
@@ -489,9 +673,7 @@ namespace TextureEditor
 
         private KeyValuePair<uint, TextureSet> GetSelectedTextureKVP()
         {
-            string selectedFileTexture = GetSelectedFileTexture();
-
-            return textureEditor.MapTextureSet[selectedFileTexture].ElementAt(GetSelectedTextureListBoxIndex());
+            return (KeyValuePair<uint, TextureSet>)TexturesListBox.SelectedItem;
         }
 
         private string GetSelectedFileTexture()

@@ -29,6 +29,7 @@ namespace TextureEditor
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             this.PictureBox1 = new System.Windows.Forms.PictureBox();
             this.TexturesListBox = new System.Windows.Forms.ListBox();
@@ -82,6 +83,8 @@ namespace TextureEditor
             this.DataToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.LoadToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.SaveToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.SearchTextureIdTextBox = new System.Windows.Forms.TextBox();
+            this.SearchTextureIdTimer = new System.Windows.Forms.Timer(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.PictureBox1)).BeginInit();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
@@ -106,9 +109,9 @@ namespace TextureEditor
             this.TexturesListBox.FormattingEnabled = true;
             this.TexturesListBox.IntegralHeight = false;
             this.TexturesListBox.ItemHeight = 15;
-            this.TexturesListBox.Location = new System.Drawing.Point(8, 83);
+            this.TexturesListBox.Location = new System.Drawing.Point(8, 86);
             this.TexturesListBox.Name = "TexturesListBox";
-            this.TexturesListBox.Size = new System.Drawing.Size(186, 450);
+            this.TexturesListBox.Size = new System.Drawing.Size(186, 447);
             this.TexturesListBox.TabIndex = 2;
             this.TexturesListBox.SelectedIndexChanged += new System.EventHandler(this.TexturesListBox_SelectedIndexChanged);
             // 
@@ -591,11 +594,25 @@ namespace TextureEditor
             this.SaveToolStripMenuItem.Text = "Save";
             this.SaveToolStripMenuItem.Click += new System.EventHandler(this.SaveToolStripMenuItem_Click);
             // 
+            // SearchTextureIdTextBox
+            // 
+            this.SearchTextureIdTextBox.Location = new System.Drawing.Point(8, 60);
+            this.SearchTextureIdTextBox.Name = "SearchTextureIdTextBox";
+            this.SearchTextureIdTextBox.Size = new System.Drawing.Size(186, 20);
+            this.SearchTextureIdTextBox.TabIndex = 27;
+            this.SearchTextureIdTextBox.TextChanged += new System.EventHandler(this.SearchTextureIdTextBox_TextChanged);
+            // 
+            // SearchTextureIdTimer
+            // 
+            this.SearchTextureIdTimer.Interval = 500;
+            this.SearchTextureIdTimer.Tick += new System.EventHandler(this.SearchTextureIdTimer_Tick);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1794, 728);
+            this.Controls.Add(this.SearchTextureIdTextBox);
             this.Controls.Add(this.label14);
             this.Controls.Add(this.DeleteTextureFromFileButton);
             this.Controls.Add(this.AddTextureInFileButton);
@@ -683,6 +700,8 @@ namespace TextureEditor
         private System.Windows.Forms.ToolStripMenuItem DataToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem LoadToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem SaveToolStripMenuItem;
+        private System.Windows.Forms.TextBox SearchTextureIdTextBox;
+        private System.Windows.Forms.Timer SearchTextureIdTimer;
     }
 }
 
