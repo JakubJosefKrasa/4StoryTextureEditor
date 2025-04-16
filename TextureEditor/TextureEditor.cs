@@ -31,114 +31,122 @@ namespace TextureEditor
     {
         public string DirectoryPath { get; set; }
 
-        // Contains Texture file names without path
-        public List<string> TextureFileNames { get; set; } = new List<string>();
+        // holds texture quality 0 - 2 where 0 is the worst texture quality
+        public int TextureOption { get; set; }
 
-        // Dictionary where key is the texture file name and value is another dictionary where key is the texture id and value is the texture data
-        public Dictionary<string, Dictionary<uint, CT3DTexture>> MapTexture { get; set; } = new Dictionary<string, Dictionary<uint, CT3DTexture>>();
+        // path and name with extension of loaded texture file
+        public string LoadedTextureFileFullPathAndName { get; set; }
 
-        // Dictionary where key is the texture file name and value is another dictionary where key is the texture id and value is the texture set data that holds texture and its all info
-        public Dictionary<string, Dictionary<uint, TextureSet>> MapTextureSet { get; set; } = new Dictionary<string, Dictionary<uint, TextureSet>>();
+        // name and extension of loaded texture file
+        public string LoadedTextureFileName {  get; set; }
 
-        public static string LoadString(BinaryReader br)
+        // Dictionary where key is the texture id and value is the texture data
+        public Dictionary<uint, CT3DTexture> MapTexture { get; set; } = new Dictionary<uint, CT3DTexture>();
+
+        // Dictionary where key is the texture id and value is the texture set data that holds texture and its all info
+        public Dictionary<uint, TextureSet> MapTextureSet { get; set; } = new Dictionary<uint, TextureSet>();
+
+        private List<string> AllTextureFiles { get; set; } = new List<string>();
+
+        private int IndexOfTextureFile { get; set; }
+
+        // Holds total count of textures in index file excluding textures from loaded texture file (example: in index file total count of textures is 100 and we loaded 10 textures from texture file so it holds 90)
+        private int TotalCountOfTexturesInIndexFile { get; set; }
+
+        public void LoadTEX()
         {
-            string strToReturn = "";
+            Dictionary<uint, CT3DTexture> mapTextureTemp = new Dictionary<uint, CT3DTexture>();
+            Dictionary<uint, TextureSet> mapTextureSetTemp = new Dictionary<uint, TextureSet>();
 
-            int nLength = br.ReadInt32();
-            if (nLength > 0)
+            string skinKeyWord = "Skin\\";
+            int indexOfSkin = LoadedTextureFileFullPathAndName.IndexOf(skinKeyWord);
+
+            // Gets only texture file name with extension without path
+            string textureFileName = indexOfSkin >= 0 ? LoadedTextureFileFullPathAndName.Substring(indexOfSkin + skinKeyWord.Length) : "";
+
+            LoadTEX(textureFileName, mapTextureTemp, mapTextureSetTemp);
+
+
+            string indexFileAndPath = $"{DirectoryPath}\\Index\\{TextureOption}_TClientS.IDX";
+
+            if (!File.Exists(indexFileAndPath))
             {
-                byte[] bytes = br.ReadBytes(nLength);
-                strToReturn = Encoding.Default.GetString(bytes);
-            }
-
-            return strToReturn;
-        }
-
-        public void LoadTEX(int textureComp, string indexFile)
-        {
-            MapTexture.Clear();
-            MapTextureSet.Clear();
-
-            TextureFileNames.Clear();
-
-            if (!File.Exists(indexFile))
-            {
-                Console.WriteLine("Index file not found: " + indexFile);
+                Console.WriteLine("Index file not found: " + indexFileAndPath);
                 return;
             }
 
-            using (BinaryReader br = new BinaryReader(File.Open(indexFile, FileMode.Open)))
+            Console.WriteLine("Index file found");
+
+            using (BinaryReader br = new BinaryReader(File.Open(indexFileAndPath, FileMode.Open)))
             {
                 int textureFileCount = br.ReadInt32();
                 int textureTotalCount = br.ReadInt32();
 
-                Dictionary<string, Dictionary<uint, CT3DTexture>> mapTextureTemp = new Dictionary<string, Dictionary<uint, CT3DTexture>>();
-                Dictionary<string, Dictionary<uint, TextureSet>> mapTextureSetTemp = new Dictionary<string, Dictionary<uint, TextureSet>>();
+                IndexOfTextureFile = -1;
 
-                // Contains texture file names with path
-                List<string> textureFilesToLoad = new List<string>();
-
-                // Load from index file all texture (.TTX) file names
                 for (int i = 0; i < textureFileCount; i++)
                 {
                     string textureFile = LoadString(br);
 
-                    // Add texture file with path
-                    textureFilesToLoad.Add(textureFile);
-
                     // Remove path and add to list to be stored as key
                     int index = textureFile.IndexOf("\\");
                     textureFile = textureFile.Substring(index + 1);
-                    TextureFileNames.Add(textureFile);
+
+                    AllTextureFiles.Add(textureFile);
+                    
+                    if (textureFile == LoadedTextureFileName) IndexOfTextureFile = i;
                 }
 
-                int nIndex = 0;
-                int n = 0;
-                for (int i = 0; i < textureFilesToLoad.Count; i++)
+                if (IndexOfTextureFile == -1)
                 {
-                    MapTexture.Add(TextureFileNames[i], new Dictionary<uint, CT3DTexture>());
-                    MapTextureSet.Add(TextureFileNames[i], new Dictionary<uint, TextureSet>());
+                    MessageBox.Show("Texture File wasn't found in Index File");
 
-                    mapTextureTemp.Add(TextureFileNames[i], new Dictionary<uint, CT3DTexture>());
-                    mapTextureSetTemp.Add(TextureFileNames[i], new Dictionary<uint, TextureSet>());
-
-                    LoadTEX(textureFilesToLoad[i], mapTextureTemp[TextureFileNames[i]], mapTextureSetTemp[TextureFileNames[i]], ref nIndex, textureTotalCount);
-                    n++;
+                    return;
                 }
 
 
+                int loadedTexturesCount = 0;
                 for (int i = 0; i < textureTotalCount; i++)
                 {
                     uint dwTextureID = br.ReadUInt32();
                     uint dwFileID = br.ReadUInt32();
                     uint dwPOS = br.ReadUInt32();
 
-
-                    if (mapTextureTemp[TextureFileNames[(int)dwFileID]].TryGetValue(dwPOS, out CT3DTexture texture))
+                    if (dwFileID == IndexOfTextureFile)
                     {
-                        MapTexture[TextureFileNames[(int)dwFileID]].Add(dwTextureID, texture);
-                        mapTextureTemp[TextureFileNames[(int)dwFileID]].Remove(dwPOS);
-                    }
+                        if (mapTextureTemp.TryGetValue(dwPOS, out CT3DTexture texture))
+                        {
+                            MapTexture.Add(dwTextureID, texture);
+                            mapTextureTemp.Remove(dwPOS);
+                        }
 
-                    if (mapTextureSetTemp[TextureFileNames[(int)dwFileID]].TryGetValue(dwPOS, out TextureSet textureSet))
-                    {
-                        MapTextureSet[TextureFileNames[(int)dwFileID]].Add(dwTextureID, textureSet);
-                        mapTextureSetTemp[TextureFileNames[(int)dwFileID]].Remove(dwPOS);
+                        if (mapTextureSetTemp.TryGetValue(dwPOS, out TextureSet textureSet))
+                        {
+                            MapTextureSet.Add(dwTextureID, textureSet);
+                            mapTextureSetTemp.Remove(dwPOS);
+
+                            loadedTexturesCount++;
+                        }
                     }
                 }
+
+                TotalCountOfTexturesInIndexFile = textureTotalCount - loadedTexturesCount;
             }
 
-            Console.WriteLine("TEX files loaded successfully");
+            Console.WriteLine("Finished loading");
         }
-
-        private void LoadTEX(string file, Dictionary<uint, CT3DTexture> mapTexture, Dictionary<uint, TextureSet> mapTextureSet, ref int nIndex, int textureTotalCount)
+        private void LoadTEX(string file, Dictionary<uint, CT3DTexture> mapTexture, Dictionary<uint, TextureSet> mapTextureSet)
         {
-            string filePath = $"{DirectoryPath}\\Data\\{file}";
+            string filePath = $"{DirectoryPath}\\Data\\Skin\\{file}";
+
             if (!File.Exists(filePath))
             {
                 Console.WriteLine("Texture file not found: " + filePath);
                 return;
             }
+
+            MapTexture.Clear();
+            MapTextureSet.Clear();
 
             using (FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
             using (BinaryReader br = new BinaryReader(fileStream))
@@ -229,30 +237,25 @@ namespace TextureEditor
                     CTachyonWrapperFunctions.UncompressorDestroy(ucpr);
 
                     dwPos = fileStream.Position;
-                    nIndex++;
-                    Console.WriteLine($"Progress: {nIndex * 100 / textureTotalCount}%");
                 }
             }
         }
 
         public void CompleteTEX()
         {
-            foreach (var texturesInFile in MapTextureSet)
+            foreach (var texture in MapTextureSet)
             {
-                foreach (var dwTextureById in texturesInFile.Value)
+                if (texture.Value != null)
                 {
-                    if (dwTextureById.Value != null)
+                    int nTexturesCount = texture.Value.GetTexturesCount();
+
+                    for (int i = 0; i < nTexturesCount; i++)
                     {
-                        int nTexturesCount = dwTextureById.Value.GetTexturesCount();
+                        uint textureIdToFind = texture.Value.GetTextureId(i);
 
-                        for (int i = 0; i < nTexturesCount; i++)
+                        if (MapTexture.TryGetValue(textureIdToFind, out CT3DTexture foundTexture))
                         {
-                            uint textureIdToFind = dwTextureById.Value.GetTextureId(i);
-
-                            if (MapTexture[texturesInFile.Key].TryGetValue(textureIdToFind, out CT3DTexture texture))
-                            {
-                                dwTextureById.Value.SetTextureData(i, texture);
-                            }
+                            texture.Value.SetTextureData(i, foundTexture);
                         }
                     }
                 }
@@ -267,32 +270,25 @@ namespace TextureEditor
             if (!Directory.Exists(mapOutputDir))
                 Directory.CreateDirectory(mapOutputDir);
 
-            foreach (var texturesInFile in MapTextureSet)
+            foreach (var textureKVP in MapTextureSet)
             {
-                foreach (var dwIDTexture in texturesInFile.Value)
+                if (textureKVP.Value != null)
                 {
-                    if (dwIDTexture.Value != null)
+                    uint textureID = textureKVP.Key;
+
+                    if (textureKVP.Value.GetTextureData(0) != null)
                     {
-                        uint textureID = dwIDTexture.Key;
+                        Bitmap bmp = textureKVP.Value.GetTextureData(0).GetTextureBitmap(false);
 
-                        if (dwIDTexture.Value.GetTextureData(0) != null)
+                        string filePath = Path.Combine(mapOutputDir, $"{TextureOption}_{LoadedTextureFileName}_{textureID}.png");
+
+                        try
                         {
-                            Bitmap bmp = dwIDTexture.Value.GetTextureData(0).GetTextureBitmap(false);
-
-                            if (bmp != null)
-                            {
-                                string filePath = Path.Combine(mapOutputDir, $"{texturesInFile.Key}_{textureID}.png");
-
-                                try
-                                {
-                                    bmp.Save(filePath, ImageFormat.Png);
-                                    Console.WriteLine($"Saved texture {textureID} to {filePath}");
-                                }
-                                catch (Exception ex)
-                                {
-                                    Console.WriteLine($"Error saving texture {textureID}: {ex.Message}");
-                                }
-                            }
+                            bmp.Save(filePath, ImageFormat.Png);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Error saving texture {textureID}: {ex.Message}");
                         }
                     }
                 }
@@ -309,96 +305,86 @@ namespace TextureEditor
 
             IntPtr device = CTachyonWrapperFunctions.DeviceCreate();
 
-            int fileIndex = 0;
-            foreach (string textureFileName in TextureFileNames)
+            string fileNameAndPath = Path.Combine(listOutputDir, LoadedTextureFileName);
+
+            IntPtr pFile = CTachyonWrapperFunctions.DoCreateNewFile(fileNameAndPath);
+
+            foreach (KeyValuePair<uint, TextureSet> textureSet in MapTextureSet)
             {
-                if (!MapTextureSet.TryGetValue(textureFileName, out var textureSets))
-                    continue;
+                uint filePosition = CTachyonWrapperFunctions.DoGetFilePosition(pFile);
 
-                string fileNameAndPath = Path.Combine(listOutputDir, textureFileName);
+                IntPtr tachyonCompressor = CTachyonWrapperFunctions.CompressorCreate();
 
-                IntPtr pFile = CTachyonWrapperFunctions.DoCreateNewFile(fileNameAndPath);
+                TextureSet texture = textureSet.Value;
 
+                int texturesCount = texture.GetTexturesCount();
 
-                foreach (KeyValuePair<uint, TextureSet> kvp in textureSets)
+                WriteInt32(tachyonCompressor, texturesCount);
+
+                for (int i = 0; i < texturesCount; i++)
                 {
-                    uint filePosition = CTachyonWrapperFunctions.DoGetFilePosition(pFile);
-
-                    IntPtr tachyonCompressor = CTachyonWrapperFunctions.CompressorCreate();
-
-                    TextureSet textureSet = kvp.Value;
-
-                    int texturesCount = textureSet.GetTexturesCount();
-
-                    WriteInt32(tachyonCompressor, texturesCount);
-
-                    for (int i = 0; i < texturesCount; i++)
-                    {
-                        uint textureID = textureSet.GetTextureId(i);
-                        WriteUInt32(tachyonCompressor, textureID);
-                    }
-
-                    int uvKeysCount = textureSet.GetUVKeysCount();
-
-                    WriteInt32(tachyonCompressor, uvKeysCount);
-
-                    foreach (var uvKey in textureSet.UVKeys)
-                    {
-                        WriteUInt32(tachyonCompressor, uvKey.Tick);
-                        WriteFloat(tachyonCompressor, uvKey.KeyU);
-                        WriteFloat(tachyonCompressor, uvKey.KeyV);
-                        WriteFloat(tachyonCompressor, uvKey.KeyR);
-                        WriteFloat(tachyonCompressor, uvKey.KeySU);
-                        WriteFloat(tachyonCompressor, uvKey.KeySV);
-                    }
-
-                    WriteUInt32(tachyonCompressor, textureSet.TotalTick);
-                    WriteUInt32(tachyonCompressor, textureSet.MipFilter);
-                    WriteFloat(tachyonCompressor, textureSet.MipBias);
-                    WriteByte(tachyonCompressor, textureSet.TextureOption);
-
-                    var texture = textureSet.GetTextureData(0);
-
-                    if (texture == null)
-                    {
-                        WriteByte(tachyonCompressor, 0); //bFormat
-                        WriteUInt32(tachyonCompressor, 0); // originalSize
-                        WriteUInt32(tachyonCompressor, 0); // compressedSize
-                    }
-                    else
-                    {
-                        WriteByte(tachyonCompressor, texture.Format);
-
-                        uint originalSize;
-                        uint generatedSize;
-
-                        IntPtr generatedDataPtr;
-
-                        bool result = CTachyonWrapperFunctions.DoGenerateTextureDDS(device, texture.TextureData, (uint)texture.TextureData.Length, texture.Format, out generatedDataPtr, out generatedSize, out originalSize);
-                        if (!result)
-                        {
-                            Console.WriteLine("Error generating texture data");
-                            return;
-                        }
-
-                        byte[] generatedData = new byte[generatedSize];
-                        Marshal.Copy(generatedDataPtr, generatedData, 0, (int)generatedSize);
-
-                        WriteUInt32(tachyonCompressor, originalSize);
-                        WriteUInt32(tachyonCompressor, generatedSize);
-                        WriteBytes(tachyonCompressor, generatedData, generatedSize);
-                    }
-
-                    CTachyonWrapperFunctions.CompressorToFile(tachyonCompressor, pFile);
-                    CTachyonWrapperFunctions.CompressorDestroy(tachyonCompressor);
-
-                    indexFiles.Add(new IndexFile(kvp.Key, (uint)fileIndex, filePosition));
+                    uint textureID = texture.GetTextureId(i);
+                    WriteUInt32(tachyonCompressor, textureID);
                 }
 
-                CTachyonWrapperFunctions.DoDestroyFile(pFile);
+                int uvKeysCount = texture.GetUVKeysCount();
 
-                fileIndex++;
+                WriteInt32(tachyonCompressor, uvKeysCount);
+
+                foreach (var uvKey in texture.UVKeys)
+                {
+                    WriteUInt32(tachyonCompressor, uvKey.Tick);
+                    WriteFloat(tachyonCompressor, uvKey.KeyU);
+                    WriteFloat(tachyonCompressor, uvKey.KeyV);
+                    WriteFloat(tachyonCompressor, uvKey.KeyR);
+                    WriteFloat(tachyonCompressor, uvKey.KeySU);
+                    WriteFloat(tachyonCompressor, uvKey.KeySV);
+                }
+
+                WriteUInt32(tachyonCompressor, texture.TotalTick);
+                WriteUInt32(tachyonCompressor, texture.MipFilter);
+                WriteFloat(tachyonCompressor, texture.MipBias);
+                WriteByte(tachyonCompressor, texture.TextureOption);
+
+                var textureData = texture.GetTextureData(0);
+
+                if (textureData == null)
+                {
+                    WriteByte(tachyonCompressor, 0); //bFormat
+                    WriteUInt32(tachyonCompressor, 0); // originalSize
+                    WriteUInt32(tachyonCompressor, 0); // compressedSize
+                }
+                else
+                {
+                    WriteByte(tachyonCompressor, textureData.Format);
+
+                    uint originalSize;
+                    uint generatedSize;
+
+                    IntPtr generatedDataPtr;
+
+                    bool result = CTachyonWrapperFunctions.DoGenerateTextureDDS(device, textureData.TextureData, (uint)textureData.TextureData.Length, textureData.Format, out generatedDataPtr, out generatedSize, out originalSize);
+                    if (!result)
+                    {
+                        Console.WriteLine("Error generating texture data");
+                        return;
+                    }
+
+                    byte[] generatedData = new byte[generatedSize];
+                    Marshal.Copy(generatedDataPtr, generatedData, 0, (int)generatedSize);
+
+                    WriteUInt32(tachyonCompressor, originalSize);
+                    WriteUInt32(tachyonCompressor, generatedSize);
+                    WriteBytes(tachyonCompressor, generatedData, generatedSize);
+                }
+
+                CTachyonWrapperFunctions.CompressorToFile(tachyonCompressor, pFile);
+                CTachyonWrapperFunctions.CompressorDestroy(tachyonCompressor);
+
+                indexFiles.Add(new IndexFile(textureSet.Key, (uint)IndexOfTextureFile, filePosition));
             }
+
+            CTachyonWrapperFunctions.DoCloseFile(pFile);
 
             CTachyonWrapperFunctions.DeviceDestroy(device);
 
@@ -413,12 +399,59 @@ namespace TextureEditor
             if (!Directory.Exists(indexOutPutDir))
                 Directory.CreateDirectory(indexOutPutDir);
 
-            using (BinaryWriter binaryWriter = new BinaryWriter(File.Open(Path.Combine(indexOutPutDir, "0_TClientS.IDX"), FileMode.Create)))
-            {
-                binaryWriter.Write(TextureFileNames.Count);
-                binaryWriter.Write(indexFiles.Count);
+            int totalTexturesInNewIndexFile = TotalCountOfTexturesInIndexFile + indexFiles.Count;
 
-                foreach (var textureFileName in TextureFileNames)
+            string indexFileAndPath = $"{DirectoryPath}\\Index\\{TextureOption}_TClientS.IDX";
+
+            using (BinaryReader binaryReader = new BinaryReader(File.Open(indexFileAndPath, FileMode.Open)))
+            using (BinaryWriter binaryWriter = new BinaryWriter(File.Open(Path.Combine(indexOutPutDir, $"{TextureOption}_TClientS.IDX"), FileMode.Create)))
+            {
+                // read old index and store all info
+                int readTextureFileCount = binaryReader.ReadInt32();
+                int textureTotalCount = binaryReader.ReadInt32();
+
+                
+                List<string> textureFileList = new List<string>();
+                for (int i = 0; i < readTextureFileCount; i++)
+                {
+                    textureFileList.Add(LoadString(binaryReader));
+                }
+
+                List<IndexFile> oldRecords = new List<IndexFile>();
+                for (int i = 0; i < textureTotalCount; i++)
+                {
+                    uint dwTextureID = binaryReader.ReadUInt32();
+                    uint dwFileID = binaryReader.ReadUInt32();
+                    uint dwPOS = binaryReader.ReadUInt32();
+
+                    oldRecords.Add(new IndexFile(dwTextureID, dwFileID, dwPOS));
+                }
+
+                List<IndexFile> newRecords = new List<IndexFile>();
+                bool isNewInserted = false;
+
+                foreach (IndexFile indexFile in oldRecords)
+                {
+                    if (indexFile.FileID == IndexOfTextureFile)
+                    {
+                        if (!isNewInserted)
+                        {
+                            newRecords.AddRange(indexFiles);
+                            isNewInserted = true;
+                        }
+                    }
+                    else
+                    {
+                        newRecords.Add(indexFile);
+                    }
+                }
+
+                int newTotalTexturesCount = newRecords.Count;
+
+                binaryWriter.Write(AllTextureFiles.Count);
+                binaryWriter.Write(newTotalTexturesCount);
+
+                foreach (string textureFileName in AllTextureFiles)
                 {
                     string textureFileNameAndPath = $"Skin\\{textureFileName}";
                     byte[] textureFileNameAndPathBytes = Encoding.Default.GetBytes(textureFileNameAndPath);
@@ -426,7 +459,7 @@ namespace TextureEditor
                     binaryWriter.Write(textureFileNameAndPathBytes);
                 }
 
-                foreach (var indexFile in indexFiles)
+                foreach (IndexFile indexFile in newRecords)
                 {
                     binaryWriter.Write(indexFile.TextureID);
                     binaryWriter.Write(indexFile.FileID);
@@ -435,7 +468,21 @@ namespace TextureEditor
             }
         }
 
-    #region CTachyon helper methods for reading and writing
+        private string LoadString(BinaryReader br)
+        {
+            string strToReturn = "";
+
+            int nLength = br.ReadInt32();
+            if (nLength > 0)
+            {
+                byte[] bytes = br.ReadBytes(nLength);
+                strToReturn = Encoding.Default.GetString(bytes);
+            }
+
+            return strToReturn;
+        }
+
+        #region CTachyon helper methods for reading and writing
 
         private int ReadInt32(IntPtr ucpr)
         {

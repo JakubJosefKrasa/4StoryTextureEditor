@@ -59,29 +59,47 @@ namespace TextureEditor
         {
             using (OpenFileDialog openFileDialog = new OpenFileDialog())
             {
-                openFileDialog.Filter = "Index File (*S.IDX)|*S.IDX";
-                openFileDialog.Title = "Select an Index file";
+                openFileDialog.Filter = "Texture File (*.TTX)|*.TTX";
+                openFileDialog.Title = "Select texture file";
 
                 if (openFileDialog.ShowDialog() == DialogResult.OK)
                 {
-                    Console.WriteLine("Loading index file: " + openFileDialog.FileName);
-                    string fullPath = openFileDialog.FileName;
-                    int indexPosition = fullPath.LastIndexOf("\\Index\\");
+                    Console.WriteLine("Loading texture file: " + openFileDialog.FileName);
+                    string textureFileFullPath = openFileDialog.FileName;
+                    int dataPosition = textureFileFullPath.LastIndexOf("\\Data\\");
 
-                    if (indexPosition > -1)
+
+                    if (dataPosition > -1)
                     {
-                        textureEditor.DirectoryPath = fullPath.Substring(0, indexPosition);
-                        textureEditor.LoadTEX(0, fullPath);
+                        TextureFileComboBox.Items.Clear();
+
+                        // Get path of the game file 
+                        textureEditor.DirectoryPath = textureFileFullPath.Substring(0, dataPosition);
+                        textureEditor.LoadedTextureFileFullPathAndName = textureFileFullPath;
+
+                        string skinKeyWord = "Skin\\";
+                        int indexOfSkin = textureEditor.LoadedTextureFileFullPathAndName.IndexOf(skinKeyWord);
+
+                        textureEditor.LoadedTextureFileName = indexOfSkin >= 0 ? textureEditor.LoadedTextureFileFullPathAndName.Substring(indexOfSkin + skinKeyWord.Length) : "";
+
+                        // If the first character in texure name isn't number and isn't 0-9 it won't work but that shouldn't happen because 4story uses only 0-2
+                        textureEditor.TextureOption = int.Parse(textureEditor.LoadedTextureFileName.Substring(0, 1));
+
+                        textureEditor.LoadTEX();
                         textureEditor.CompleteTEX();
 
-                        textureEditor.TextureFileNames.ForEach(textureFileName => SelectFileComboBox.Items.Add(textureFileName));
+                        TextureFileComboBox.Items.Add(textureEditor.LoadedTextureFileName);
+
+                        TextureFileComboBox.SelectedIndex = 0;
+
                         DumpAllTexturesPngButton.Enabled = true;
-                        SelectFileComboBox.Enabled = true;
+                        TextureFileComboBox.Enabled = true;
+
                         MessageBox.Show("Textures loaded");
                     }
                     else
                     {
-                        MessageBox.Show("Invalid index file path");
+                        MessageBox.Show("Invalid texture file path");
                     }
                 }
             }
@@ -94,11 +112,12 @@ namespace TextureEditor
 
         private void SelectFileComboBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-            int selectedIndex = SelectFileComboBox.SelectedIndex;
+            int selectedIndex = TextureFileComboBox.SelectedIndex;
 
-            if (selectedIndex < 0) return;
+            if (selectedIndex != 0) return;
 
-            TexturesListBox.DataSource = new BindingSource(textureEditor.MapTextureSet[textureEditor.TextureFileNames[selectedIndex]], null);
+            //TexturesListBox.DataSource = new BindingSource(textureEditor.MapTextureSet[textureEditor.TextureFileNames[selectedIndex]], null);
+            TexturesListBox.DataSource = new BindingSource(textureEditor.MapTextureSet, null);
             TexturesListBox.DisplayMember = "Key";
             TexturesListBox.ValueMember = "Value";
 
@@ -120,9 +139,10 @@ namespace TextureEditor
 
         private void DoSearchTextureId()
         {
-            int selectedIndex = SelectFileComboBox.SelectedIndex;
+            
+            int selectedIndex = TextureFileComboBox.SelectedIndex;
 
-            if (selectedIndex < 0) return;
+            if (selectedIndex != 0) return;
 
             EnableTextureControls();
 
@@ -131,7 +151,7 @@ namespace TextureEditor
                 TexturesListBox.DataSource = null;
                 TexturesListBox.Items.Clear();
 
-                TexturesListBox.DataSource = new BindingSource(textureEditor.MapTextureSet[textureEditor.TextureFileNames[selectedIndex]], null);
+                TexturesListBox.DataSource = new BindingSource(textureEditor.MapTextureSet, null);
                 TexturesListBox.DisplayMember = "Key";
                 TexturesListBox.ValueMember = "Value";
 
@@ -152,7 +172,7 @@ namespace TextureEditor
             TexturesListBox.DataSource = null;
             TexturesListBox.Items.Clear();
 
-            Dictionary<uint, TextureSet> filteredTextures = textureEditor.MapTextureSet[textureEditor.TextureFileNames[selectedIndex]]
+            Dictionary<uint, TextureSet> filteredTextures = textureEditor.MapTextureSet
                 .Where(kvp => kvp.Key.ToString().Contains(textureIdToFind.ToString()))
                 .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
@@ -272,7 +292,6 @@ namespace TextureEditor
 
         private void TextureIdsInTextureListBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-            string selectedFileTexture = GetSelectedFileTexture();
             int selectedTextureIndex = GetSelectedTextureListBoxIndex();
             int selectedTextureIdIndex = GetSelectedIndexInTextureIdsInTextureListBox();
 
@@ -486,7 +505,8 @@ namespace TextureEditor
 
             if (selectedUVKeyIndex < 0 || selectedTextureIndex < 0) return;
 
-            TextureSet textureSet = textureEditor.MapTextureSet[textureEditor.TextureFileNames[SelectFileComboBox.SelectedIndex]].ElementAt(selectedTextureIndex).Value;
+            /*
+            TextureSet textureSet = textureEditor.MapTextureSet[textureEditor.TextureFileNames[TextureFileComboBox.SelectedIndex]].ElementAt(selectedTextureIndex).Value;
 
             UVKey key = textureSet.UVKeys[selectedUVKeyIndex];
 
@@ -498,6 +518,7 @@ namespace TextureEditor
             KeyRTextBox.Text = key.KeyR.ToString();
             KeySUTextBox.Text = key.KeySU.ToString();
             KeySVTextBox.Text = key.KeySV.ToString();
+            */
         }
 
         private void AddUVKeyButton_Click(object sender, EventArgs e)
@@ -676,11 +697,6 @@ namespace TextureEditor
             return (KeyValuePair<uint, TextureSet>)TexturesListBox.SelectedItem;
         }
 
-        private string GetSelectedFileTexture()
-        {
-            return textureEditor.TextureFileNames[SelectFileComboBox.SelectedIndex];
-        }
-
         private int GetSelectedUVKeyIndex()
         {
             return UVKeysListBox.SelectedIndex;
@@ -688,9 +704,7 @@ namespace TextureEditor
 
         private Dictionary<uint, TextureSet> GetTexturesInSelectedFile()
         {
-            string fileName = GetSelectedFileTexture();
-
-            return textureEditor.MapTextureSet[fileName];
+            return textureEditor.MapTextureSet;
         }
 
         private string GetCompressionText(byte bFormat)
@@ -712,6 +726,71 @@ namespace TextureEditor
                 default:
                     return "dxt3";
             }
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        private void TextureIdTextBox_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void TotalTickTextBox_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void CurrentTickTextBox_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void MipBiasTextBox_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void MipFilterComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void TextureFormatComboBox_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void KeyTickTextBox_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void KeyUTextBox_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void KeyVTextBox_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void KeyRTextBox_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void KeySUTextBox_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void KeySVTextBox_TextChanged(object sender, EventArgs e)
+        {
+
         }
     }
 }

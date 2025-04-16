@@ -75,6 +75,11 @@ bool GenerateTextureDDS(Device* pDevice, BYTE* pData, DWORD dwSize, BYTE bFormat
 
 void* CreateNewFile(const char* fileName) { return new CFile(fileName, CFile::modeCreate | CFile::modeWrite | CFile::typeBinary); }
 
+void CloseFile(CFile* file)
+{
+	if (file) file->Close();
+}
+
 DWORD GetFilePosition(void* pFile)
 {
 	CFile* p = reinterpret_cast<CFile*>(pFile);

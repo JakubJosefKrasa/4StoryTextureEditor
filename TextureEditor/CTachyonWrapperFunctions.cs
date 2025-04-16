@@ -24,6 +24,9 @@ namespace TextureEditor
         public static extern IntPtr DoCreateNewFile([MarshalAs(UnmanagedType.LPStr)] string fileName);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        public static extern void DoCloseFile(IntPtr file);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
         public static extern uint DoGetFilePosition(IntPtr file);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]

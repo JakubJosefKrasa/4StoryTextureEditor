@@ -17,6 +17,8 @@ bool GenerateTextureDDS(Device* pDevice, BYTE* pData, DWORD dwSize, BYTE bFormat
 
 void* CreateNewFile(const char* fileName);
 
+void CloseFile(CFile* file);
+
 DWORD GetFilePosition(void* pFile);
 
 void DestroyFile(void* pFile);

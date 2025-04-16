@@ -34,7 +34,7 @@ namespace TextureEditor
             this.PictureBox1 = new System.Windows.Forms.PictureBox();
             this.TexturesListBox = new System.Windows.Forms.ListBox();
             this.DumpAllTexturesPngButton = new System.Windows.Forms.Button();
-            this.SelectFileComboBox = new System.Windows.Forms.ComboBox();
+            this.TextureFileComboBox = new System.Windows.Forms.ComboBox();
             this.label1 = new System.Windows.Forms.Label();
             this.TexturesInFileCountLabel = new System.Windows.Forms.Label();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
@@ -117,7 +117,6 @@ namespace TextureEditor
             // 
             // DumpAllTexturesPngButton
             // 
-            this.DumpAllTexturesPngButton.Enabled = false;
             this.DumpAllTexturesPngButton.Location = new System.Drawing.Point(3, 668);
             this.DumpAllTexturesPngButton.Name = "DumpAllTexturesPngButton";
             this.DumpAllTexturesPngButton.Size = new System.Drawing.Size(191, 24);
@@ -126,15 +125,14 @@ namespace TextureEditor
             this.DumpAllTexturesPngButton.UseVisualStyleBackColor = true;
             this.DumpAllTexturesPngButton.Click += new System.EventHandler(this.DumpAllTexturesPngButton_Click);
             // 
-            // SelectFileComboBox
+            // TextureFileComboBox
             // 
-            this.SelectFileComboBox.Enabled = false;
-            this.SelectFileComboBox.FormattingEnabled = true;
-            this.SelectFileComboBox.Location = new System.Drawing.Point(73, 33);
-            this.SelectFileComboBox.Name = "SelectFileComboBox";
-            this.SelectFileComboBox.Size = new System.Drawing.Size(121, 21);
-            this.SelectFileComboBox.TabIndex = 4;
-            this.SelectFileComboBox.SelectedIndexChanged += new System.EventHandler(this.SelectFileComboBox_SelectedIndexChanged);
+            this.TextureFileComboBox.FormattingEnabled = true;
+            this.TextureFileComboBox.Location = new System.Drawing.Point(73, 33);
+            this.TextureFileComboBox.Name = "TextureFileComboBox";
+            this.TextureFileComboBox.Size = new System.Drawing.Size(121, 21);
+            this.TextureFileComboBox.TabIndex = 4;
+            this.TextureFileComboBox.SelectedIndexChanged += new System.EventHandler(this.SelectFileComboBox_SelectedIndexChanged);
             // 
             // label1
             // 
@@ -233,6 +231,7 @@ namespace TextureEditor
             this.KeySVTextBox.Name = "KeySVTextBox";
             this.KeySVTextBox.Size = new System.Drawing.Size(119, 20);
             this.KeySVTextBox.TabIndex = 10;
+            this.KeySVTextBox.TextChanged += new System.EventHandler(this.KeySVTextBox_TextChanged);
             // 
             // label6
             // 
@@ -249,6 +248,7 @@ namespace TextureEditor
             this.KeySUTextBox.Name = "KeySUTextBox";
             this.KeySUTextBox.Size = new System.Drawing.Size(119, 20);
             this.KeySUTextBox.TabIndex = 8;
+            this.KeySUTextBox.TextChanged += new System.EventHandler(this.KeySUTextBox_TextChanged);
             // 
             // label4
             // 
@@ -265,6 +265,7 @@ namespace TextureEditor
             this.KeyVTextBox.Name = "KeyVTextBox";
             this.KeyVTextBox.Size = new System.Drawing.Size(119, 20);
             this.KeyVTextBox.TabIndex = 6;
+            this.KeyVTextBox.TextChanged += new System.EventHandler(this.KeyVTextBox_TextChanged);
             // 
             // label5
             // 
@@ -281,6 +282,7 @@ namespace TextureEditor
             this.KeyRTextBox.Name = "KeyRTextBox";
             this.KeyRTextBox.Size = new System.Drawing.Size(119, 20);
             this.KeyRTextBox.TabIndex = 4;
+            this.KeyRTextBox.TextChanged += new System.EventHandler(this.KeyRTextBox_TextChanged);
             // 
             // label3
             // 
@@ -297,6 +299,7 @@ namespace TextureEditor
             this.KeyUTextBox.Name = "KeyUTextBox";
             this.KeyUTextBox.Size = new System.Drawing.Size(119, 20);
             this.KeyUTextBox.TabIndex = 2;
+            this.KeyUTextBox.TextChanged += new System.EventHandler(this.KeyUTextBox_TextChanged);
             // 
             // label2
             // 
@@ -313,6 +316,7 @@ namespace TextureEditor
             this.KeyTickTextBox.Name = "KeyTickTextBox";
             this.KeyTickTextBox.Size = new System.Drawing.Size(119, 20);
             this.KeyTickTextBox.TabIndex = 0;
+            this.KeyTickTextBox.TextChanged += new System.EventHandler(this.KeyTickTextBox_TextChanged);
             // 
             // groupBox2
             // 
@@ -386,6 +390,7 @@ namespace TextureEditor
             this.TextureFormatComboBox.Name = "TextureFormatComboBox";
             this.TextureFormatComboBox.Size = new System.Drawing.Size(182, 21);
             this.TextureFormatComboBox.TabIndex = 18;
+            this.TextureFormatComboBox.SelectedIndexChanged += new System.EventHandler(this.TextureFormatComboBox_SelectedIndexChanged);
             // 
             // label12
             // 
@@ -405,6 +410,7 @@ namespace TextureEditor
             this.MipFilterComboBox.Name = "MipFilterComboBox";
             this.MipFilterComboBox.Size = new System.Drawing.Size(182, 21);
             this.MipFilterComboBox.TabIndex = 16;
+            this.MipFilterComboBox.SelectedIndexChanged += new System.EventHandler(this.MipFilterComboBox_SelectedIndexChanged);
             // 
             // label8
             // 
@@ -421,6 +427,7 @@ namespace TextureEditor
             this.MipBiasTextBox.Name = "MipBiasTextBox";
             this.MipBiasTextBox.Size = new System.Drawing.Size(119, 20);
             this.MipBiasTextBox.TabIndex = 14;
+            this.MipBiasTextBox.TextChanged += new System.EventHandler(this.MipBiasTextBox_TextChanged);
             // 
             // label9
             // 
@@ -446,6 +453,7 @@ namespace TextureEditor
             this.CurrentTickTextBox.Name = "CurrentTickTextBox";
             this.CurrentTickTextBox.Size = new System.Drawing.Size(119, 20);
             this.CurrentTickTextBox.TabIndex = 10;
+            this.CurrentTickTextBox.TextChanged += new System.EventHandler(this.CurrentTickTextBox_TextChanged);
             // 
             // label11
             // 
@@ -462,6 +470,7 @@ namespace TextureEditor
             this.TotalTickTextBox.Name = "TotalTickTextBox";
             this.TotalTickTextBox.Size = new System.Drawing.Size(119, 20);
             this.TotalTickTextBox.TabIndex = 8;
+            this.TotalTickTextBox.TextChanged += new System.EventHandler(this.TotalTickTextBox_TextChanged);
             // 
             // groupBox4
             // 
@@ -531,6 +540,7 @@ namespace TextureEditor
             this.TextureIdTextBox.Name = "TextureIdTextBox";
             this.TextureIdTextBox.Size = new System.Drawing.Size(149, 20);
             this.TextureIdTextBox.TabIndex = 2;
+            this.TextureIdTextBox.TextChanged += new System.EventHandler(this.TextureIdTextBox_TextChanged);
             // 
             // AddTextureInFileButton
             // 
@@ -622,7 +632,7 @@ namespace TextureEditor
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.TexturesInFileCountLabel);
             this.Controls.Add(this.label1);
-            this.Controls.Add(this.SelectFileComboBox);
+            this.Controls.Add(this.TextureFileComboBox);
             this.Controls.Add(this.DumpAllTexturesPngButton);
             this.Controls.Add(this.TexturesListBox);
             this.Controls.Add(this.menuStrip1);
@@ -631,6 +641,7 @@ namespace TextureEditor
             this.MainMenuStrip = this.menuStrip1;
             this.Name = "Form1";
             this.Text = "4Story Texture Editor by pizza";
+            this.Load += new System.EventHandler(this.Form1_Load);
             ((System.ComponentModel.ISupportInitialize)(this.PictureBox1)).EndInit();
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
@@ -651,7 +662,7 @@ namespace TextureEditor
         private System.Windows.Forms.PictureBox PictureBox1;
         private System.Windows.Forms.ListBox TexturesListBox;
         private System.Windows.Forms.Button DumpAllTexturesPngButton;
-        private System.Windows.Forms.ComboBox SelectFileComboBox;
+        private System.Windows.Forms.ComboBox TextureFileComboBox;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label TexturesInFileCountLabel;
         private System.Windows.Forms.GroupBox groupBox1;

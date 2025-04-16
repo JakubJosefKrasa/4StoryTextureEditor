@@ -21,6 +21,11 @@ extern "C"
         return CreateNewFile(fileName);
     }
 
+    TACHYONZLIB_EXPORT_API void DoCloseFile(void* file)
+    {
+        CloseFile(reinterpret_cast<CFile*>(file));
+    }
+
     TACHYONZLIB_EXPORT_API unsigned int DoGetFilePosition(void* pFile)
     {
         return GetFilePosition(pFile);

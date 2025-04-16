@@ -7,6 +7,7 @@ extern "C"
 	TACHYONZLIB_EXPORT_API bool DoGenerateTextureDDS(void* pDevice, void* pData, DWORD dwSize, BYTE bFormat, void** ppGeneratedDataOut, void* pGeneratedSizeOut, void* pOriginalSizeOut);
 
 	TACHYONZLIB_EXPORT_API void* DoCreateNewFile(const char* fileName);
+	TACHYONZLIB_EXPORT_API void DoCloseFile(void* file);
 
 	TACHYONZLIB_EXPORT_API unsigned int DoGetFilePosition(void* pFile);
 
