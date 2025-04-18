@@ -256,7 +256,7 @@ namespace TextureEditor
 
         private void AddTextureInFileButton_Click(object sender, EventArgs e)
         {
-             Dictionary<uint, TextureSet> texturesInFile = GetTexturesInSelectedFile();
+            Dictionary<uint, TextureSet> texturesInFile = GetTexturesInSelectedFile();
             uint textureID = texturesInFile.Last().Key + 1;
 
             TexturesListBox.Items.Add($"ID: {textureID}");
@@ -500,13 +500,14 @@ namespace TextureEditor
 
         private void UVKeysListBox_SelectedIndexChanged(object sender, EventArgs e)
         {
+            
+            
             int selectedUVKeyIndex = UVKeysListBox.SelectedIndex;
             int selectedTextureIndex = TexturesListBox.SelectedIndex;
 
             if (selectedUVKeyIndex < 0 || selectedTextureIndex < 0) return;
 
-            /*
-            TextureSet textureSet = textureEditor.MapTextureSet[textureEditor.TextureFileNames[TextureFileComboBox.SelectedIndex]].ElementAt(selectedTextureIndex).Value;
+            TextureSet textureSet = GetSelectedTextureData();
 
             UVKey key = textureSet.UVKeys[selectedUVKeyIndex];
 
@@ -518,7 +519,6 @@ namespace TextureEditor
             KeyRTextBox.Text = key.KeyR.ToString();
             KeySUTextBox.Text = key.KeySU.ToString();
             KeySVTextBox.Text = key.KeySV.ToString();
-            */
         }
 
         private void AddUVKeyButton_Click(object sender, EventArgs e)
